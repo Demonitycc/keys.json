@@ -3,14 +3,22 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Crosshair(QtWidgets.QWidget):
     def __init__(self, parent=None, windowSize=24, penWidth=2, color=(50, 255, 50), design=1):
-        QtWidgets.QWidget.__init__(self, parent)
+        super().__init__(parent)
         self.ws = windowSize
         self.resize(windowSize + 1, windowSize + 1)
         self.pen = QtGui.QPen(QtGui.QColor(*color))
         self.pen.setWidth(penWidth)
-        self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.WindowTransparentForInput)
+        self.setWindowFlags(QtCore.Qt.FramelessWindowHint | 
+                           QtCore.Qt.WindowStaysOnTopHint | 
+                           QtCore.Qt.Tool |  # Ensures it stays on top
+                           QtCore.Qt.WindowTransparentForInput)  # Allows clicks to go through
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        self.move(QtWidgets.QApplication.desktop().screen().rect().center() - self.rect().center() + QtCore.QPoint(1, 1))
+        
+        # Center the crosshair on the screen
+        screen_geometry = QtWidgets.QDesktopWidget().screenGeometry()
+        self.move((screen_geometry.width() - self.width()) // 2, 
+                  (screen_geometry.height() - self.height()) // 2)
+
         self.design = design
 
     def setCrosshairProperties(self, windowSize, penWidth, color, design):
@@ -28,8 +36,8 @@ class Crosshair(QtWidgets.QWidget):
         painter = QtGui.QPainter(self)
         painter.setPen(self.pen)
 
+        # Drawing different designs
         if self.design == 1:
-            crosshairlength = 3
             painter.drawLine(res, 0, res, res - red)
             painter.drawLine(res, res + red + 1, res, ws)
             painter.drawLine(0, res, res - red, res)
@@ -92,9 +100,9 @@ class CrosshairEditor(QtWidgets.QWidget):
         self.size_input.setValidator(QtGui.QIntValidator(1, 100))
         self.size_input.setAlignment(QtCore.Qt.AlignCenter)
 
-        self.width_label = QtWidgets.QLabel('(0-10) Width:')
+        self.width_label = QtWidgets.QLabel('(1-10) Width:')
         self.width_input = QtWidgets.QLineEdit()
-        self.width_input.setValidator(QtGui.QIntValidator(1, 100))
+        self.width_input.setValidator(QtGui.QIntValidator(1, 10))
         self.width_input.setAlignment(QtCore.Qt.AlignCenter)
 
         self.color_label = QtWidgets.QLabel('Crosshair Color:')
@@ -103,7 +111,7 @@ class CrosshairEditor(QtWidgets.QWidget):
 
         self.crosshair_design_label = QtWidgets.QLabel('Crosshair Theme:')
         self.crosshair_design_combo = QtWidgets.QComboBox()
-        self.crosshair_design_combo.addItems(['Original', 'Dot', 'Square', 'Cross', 'Circle', 'Triangle', 'X', 'Diamond', 'Arrow', 'Exit'])
+        self.crosshair_design_combo.addItems(['Original', 'Dot', 'Square', 'Cross', 'Circle', 'Triangle', 'X', 'Diamond', 'Arrow', 'Hexagon'])
 
         self.apply_button = QtWidgets.QPushButton('Apply')
         self.apply_button.clicked.connect(self.applyChanges)
@@ -181,7 +189,7 @@ class CrosshairEditor(QtWidgets.QWidget):
                         color = tuple(map(int, settings['Color'].split(', ')))
                         design_index = int(settings['Design'])
 
-                        if 1 <= size <= 100 and 1 <= width <= 100:
+                        if 1 <= size <= 100 and 1 <= width <= 10:
                             self.size_input.setText(str(size))
                             self.width_input.setText(str(width))
                             self.color_button.setStyleSheet("background-color: rgb({}, {}, {});".format(*color))
